@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo app</title>
+</head>
+
+<body>
+    <ul class="todo-list">
+
+    </ul>
+
+    <form action="/todo" method="POST" class="todo-form">
+        <input type="text" name="text" id="todo_text">
+        <input type="submit" value="Submit">
+    </form>
+
+    <script>
+        const todoList = document.querySelector('.todo-list');
+
+        function createList(data) {
+            data.forEach(todo => {
+                const li = document.createElement('LI');
+                li.setAttribute('data-id', todo.id);
+                const p = document.createElement('P');
+                p.textContent = todo.text;
+                li.appendChild(p);
+                const buttonDone = document.createElement('BUTTON');
+                buttonDone.innerText = 'Done';
+                buttonDone.classList.add('done');
+                buttonDone.addEventListener('click', handleDone);
+                buttonDone.setAttribute('data-id', todo.id);
+                li.appendChild(buttonDone);
+                const buttonDel = document.createElement('BUTTON');
+                buttonDel.classList.add('del');
+                buttonDel.innerText = 'Delete';
+                buttonDel.addEventListener('click', handleDelete);
+                buttonDel.setAttribute('data-id', todo.id);
+                li.appendChild(buttonDel);
+                todoList.appendChild(li);
+            });
+        }
+
+        function handleDone(event) {
+            const id = event.target.dataset.id;
+            event.target.setAttribute('disabled', true);
+            fetch(`${url}/todo/${id}`).then(response => {
+                if (response.status === 204) {
+                    event.target.previousElementSibling.style.textDecoration = 'line-through';
+                }
+            })
+        }
+
+        function handleDelete(event) {
+            const id = event.target.dataset.id;
+            fetch(`${url}/todo/del/${id}`).then(response => {
+                if (response.status === 200) {
+                    todoList.innerHTML = '';
+                    getTodos(url);
+                }
+            })
+        }
+
+        function getTodos(url) {
+            return fetch(`${url}/todos`)
+                .then(response => response.json())
+                .then(data => {
+                    createList(data);
+                });
+        }
+
+        function addTodo(todo, url) {
+            fetch(`${url}/todo`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'Application/json'
+                },
+                body: JSON.stringify(todo)
+            })
+        }
+
+        function handledblclick(event) {
+            if (event.target.tagName == "P") {
+                const li = event.target.parentElement;
+                const text = li.firstElementChild.textContent;
+                const input = document.createElement('input');
+                input.value = text;
+                li.removeChild(li.firstElementChild);
+                li.prepend(input);
+            }
+        }
+
+        const url = 'http://localhost:3000';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            getTodos(url).then(() => {
+                const todoElements = document.querySelectorAll('li');
+                console.log(todoElements)
+                todoElements.forEach(element => {
+                    element.addEventListener('dblclick', handledblclick);
+                })
+            })
+        })
+
+        const todoForm = document.querySelector('.todo-form');
+        todoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const textField = document.querySelector('#todo_text');
+            const newTodo = {
+                text: textField.value,
+                id: Math.floor(Math.random() * 100 + 1)
+            }
+            addTodo(newTodo, url);
+            textField.value = '';
+            todoList.innerHTML = '';
+            getTodos(url);
+        })
+
+    </script>
+</body>
+
+</html>
