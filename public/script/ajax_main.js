@@ -9,12 +9,26 @@ function getTodos(url) {
 }
 
 function addTodo(todo, url) {
-	fetch(`${url}/todo`, {
+	return fetch(`${url}/todo`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'Application/json'
 		},
 		body: JSON.stringify(todo)
+	}).then((response) => {
+		if (response.status === 200) return response.json();
+	});
+}
+
+function modifyTodo(todoId, todoText, url) {
+	return fetch(`${url}/todo/mod/${todoId}`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'Application/json'
+		},
+		body: JSON.stringify({ text: todoText })
+	}).then((response) => {
+		if (response.status === 200) return response.json();
 	});
 }
 
@@ -48,6 +62,7 @@ function attachEventHandler(element, event, handlerFunc) {
 function checkForDone(todo) {
 	if (!todo.inProgress) {
 		document.querySelector(`li[data-id="${todo.id}"] .done`).setAttribute('disabled', true);
+		document.querySelector(`li[data-id="${todo.id}"] .done`).previousElementSibling.style.color = 'red';
 		document.querySelector(`li[data-id="${todo.id}"] .done`).previousElementSibling.style.textDecoration =
 			'line-through';
 	}
@@ -57,6 +72,7 @@ function createList(data) {
 	data.forEach((todo) => {
 		createTodoElement('LI', '.todo-list', { attribute: { 'data-id': todo.id } });
 		createTodoElement('P', `li[data-id="${todo.id}"]`, { text: `${todo.text}` });
+
 		createTodoElement('button', `li[data-id="${todo.id}"]`, {
 			attribute: { 'data-id': todo.id },
 			text: 'Done',
@@ -77,7 +93,7 @@ function createList(data) {
 }
 
 function handledblclick(event) {
-	if (event.target.tagName == 'P') {
+	if (event.target.tagName === 'P' && event.target.style.textDecoration !== 'line-through') {
 		const li = event.target.parentElement;
 		const text = li.firstElementChild.textContent;
 
@@ -101,33 +117,54 @@ function handleDone(event) {
 	fetch(`${url}/todo/${id}`).then((response) => {
 		if (response.status === 200) {
 			event.target.previousElementSibling.style.textDecoration = 'line-through';
+			event.target.previousElementSibling.style.color = 'red';
 		}
 	});
 }
 
 function handleDelete(event) {
-	console.log(event.target);
 	const id = event.target.dataset.id;
 	fetch(`${url}/todo/del/${id}`).then((response) => {
 		if (response.status === 200) {
-			todoList.innerHTML = '';
-			getTodos(url).then((data) => createList(data));
+			todoList.removeChild(document.querySelector(`li[data-id="${id}"]`));
 		}
 	});
 }
 
-function handleEdit(event) {}
+function handleEdit(event) {
+	const parent = document.querySelector(`li[data-id="${event.target.dataset.id}"]`);
+	const text = parent.firstElementChild.value;
+	modifyTodo(event.target.dataset.id, text, url).then((todo) => {
+		Array.from(parent.children).forEach((child) => parent.removeChild(child));
+
+		createTodoElement('P', `li[data-id="${parent.dataset.id}"]`, { text: `${text}` });
+
+		createTodoElement('button', `li[data-id="${parent.dataset.id}"]`, {
+			attribute: { 'data-id': parent.dataset.id },
+			text: 'Done',
+			class: [ 'done' ]
+		});
+		createTodoElement('button', `li[data-id="${parent.dataset.id}"]`, {
+			attribute: { 'data-id': parent.dataset.id },
+			text: 'Delete',
+			class: [ 'del' ]
+		});
+
+		attachEventHandler(`li[data-id="${parent.dataset.id}"] .done`, 'click', handleDone);
+		attachEventHandler(`li[data-id="${parent.dataset.id}"] .del`, 'click', handleDelete);
+		checkForDone(todo);
+	});
+}
 
 todoForm.addEventListener('submit', (e) => {
 	e.preventDefault();
 	const textField = document.querySelector('#todo_text');
 	const newTodo = {
-		text: textField.value,
-		id: Math.floor(Math.random() * 100 + 1),
-		inProgress: true
+		text: textField.value
 	};
-	addTodo(newTodo, url);
-	textField.value = '';
-	todoList.innerHTML = '';
-	getTodos(url).then((data) => createList(data));
+
+	addTodo(newTodo, url).then((todoData) => {
+		textField.value = '';
+		createList([ todoData ]);
+	});
 });

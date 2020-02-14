@@ -20,8 +20,13 @@ app.get('/todos', (req, res) => {
 });
 
 app.post('/todo', (req, res) => {
-	todos.push(req.body);
-	res.sendStatus(204);
+	const newTodo = {
+		id: Math.floor(Math.random() * 100 + 1),
+		inProgress: true,
+		text: req.body.text
+	};
+	todos.push(newTodo);
+	res.status(200).json(newTodo);
 });
 
 app.get('/todo/:id', (req, res) => {
@@ -30,9 +35,11 @@ app.get('/todo/:id', (req, res) => {
 	res.sendStatus(200);
 });
 
-// app.put('/todo/mod/:id', (req, res) => {
-
-// })
+app.post('/todo/mod/:id', (req, res) => {
+	const todoToModify = todos.find((todo) => todo.id === +req.params.id);
+	todoToModify.text = req.body.text;
+	res.status(200).json(todoToModify);
+});
 
 app.get('/todo/del/:id', (req, res) => {
 	const id = req.params.id;
